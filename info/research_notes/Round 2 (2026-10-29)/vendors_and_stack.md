@@ -1,0 +1,56 @@
+# Round 2 notes: vendors, open-source tools and Phase 2/3 stack (checked 2026-10-29)
+
+## Commercial vendors not covered in round 1
+
+| Vendor | R1 single Drive files | R2 owner + contradiction alert | R3 / R4 | R5 OAuth MCP for Claude.ai | Price, EU | Sources |
+|---|---|---|---|---|---|---|
+| Graphlit | folders only | ✘ | ✘ | stdio with env credentials | **winding down**; free export deadline 2026-08-01; embeddings and credentials not exportable | https://www.graphlit.com/pricing ; https://www.graphlit.com/legal/sunset |
+| Langdock (DE) | "Integration Files" attach single files to an agent (nightly refresh, ≤50) or folder sync (≤5 folders); needs domain-wide delegation | ✘ | ✘ | API-key MCP exposing `find_agent`/`ask_agent`, not documents | €25 / €99 per seat; EU | https://www.langdock.com/pricing ; https://docs.langdock.com/en/using-langdock/guides/knowledge/knowledge-types ; https://docs.langdock.com/en/using-langdock/guides/integrations/mcp/langdock-agent-mcp-server |
+| Vectara | no Drive connector | ✘ | ✘ | API key, self-run | from $100k/year | https://www.vectara.com/pricing ; https://github.com/vectara/vectara-mcp |
+| Supermemory | hosted Picker, files and folders; Docs "converted to markdown before ingestion (lossy)" | ✘ | internal Markdown, no history / ✘ | OAuth at `mcp.supermemory.ai/mcp`, Claude.ai not named | Free, Pro $19 (3 seats), Max $100, Scale $399; no EU region | https://supermemory.ai/docs/memory-api/connectors/google-drive ; https://supermemory.ai/docs/supermemory-mcp/introduction ; https://supermemory.ai/pricing |
+| Contextual AI | folders only (via Merge) | ✘ | ✘ | hosted MCP, auth undocumented | pay-as-you-go | https://docs.contextual.ai/connectors/google-drive.md ; https://contextual.ai/pricing |
+| Pinecone Assistant | Marketplace Drive connector (Picker) **EOL 2026-08-31** | ✘ | ✘ | API key | usage-based; EU region | https://docs.pinecone.io/release-notes/2026 ; https://docs.pinecone.io/guides/assistant/mcp-server |
+| Ragie | Drive connector documented, product page says "coming soon" | ✘ | ✘ | API key | $100–500/month + $250 per connector | https://www.ragie.ai/pricing ; https://www.ragie.ai/mcp-server |
+| Slite | folders, 6-hour sync | review owner + `verify-note` tool, human only | ✘ | OAuth at `api.slite.com/mcp`, names Claude | $10 / $20 per seat; EU-hosted (GCP Belgium) | https://slite.com/changelog/slite-mcp-server ; https://slite.com/pricing ; https://slite.com/integrations/google-drive |
+| Tettra | folders | page verifiers with reminders (Tettra pages) | ✘ | none (Zapier) | $8/seat, 10-seat minimum | https://tettra.com/pricing/ ; https://support.tettra.com/article/206-how-to-set-up-verification-on-a-page |
+| Atlassian Rovo | domain-wide Teamwork Graph connector | ✘ | ✘ | OAuth 2.1, in Claude directory, exposes Jira/Confluence/etc., not Drive search | Rovo credits | https://support.atlassian.com/organization-administration/docs/connect-google-drive-to-teamwork-graph/ ; https://support.atlassian.com/rovo/docs/getting-started-with-the-atlassian-remote-mcp-server/ |
+| Box / Egnyte | Drive replacements | ✘ | ✘ | OAuth MCP (Box in directory; Egnyte documents Claude web) | $15–50/seat (Box figures unverified) | https://developer.box.com/guides/box-mcp/remote/ ; https://developers.egnyte.com/integration/cfs/api-docs/remote-mcp-server |
+| Notion | Drive AI connector scoped by Google users / org units | ✘ | ✘ | hosted OAuth MCP | €19.50/seat; EU residency Enterprise only | https://www.notion.com/help/notion-ai-connectors ; https://developers.notion.com/docs/mcp ; https://www.notion.com/help/data-residency |
+| Glean | crawls everything | ✘ | ✘ | OAuth | ~100-seat minimum, $50–60k/year floor (unverified) | https://www.gosearch.ai/faqs/glean-enterprise-search-pricing-explained-costs-tiers-hidden-fees-gosearch-comparison/ |
+| Guru | folders / whole drives, Source Owner | one verifier per Card; Knowledge Agents auto-unverify (opt-in) with owner digest; weekly duplicate detection | ✘ | OAuth, lists claude.ai | custom; ~$25/seat with 10-seat minimum (unverified); no EU region found | https://help.getguru.com/docs/verifying-and-unverifying-cards ; https://help.getguru.com/docs/setting-up-google-drive-google-sheets-as-a-source ; https://developer.getguru.com/docs/guru-mcp-server-overview |
+| Onyx | drives/folders/My-Drive emails; no single files in 5.0.1 | ✘ | ✘ | OAuth MCP server (PKCE, 15-min tokens), all editions | Cloud $20/user/month annual; EE quote-only | https://docs.onyx.app/admins/connectors/official/google_drive/overview ; https://docs.onyx.app/overview/onyx_anywhere/mcp_server ; https://onyx.app/pricing |
+| Dust | granular tree selection; per-file and multi-Space unconfirmed (verify) | ✘ | ✘ | OAuth (DCR + CIMD) at `dust.tt/mcp` and `eu.dust.tt/mcp`; requires `resource` parameter; no client named | Pro €24 annual / €30 monthly; Max €120 / €150; EU on Business and Enterprise | https://docs.dust.tt/docs/google-drive-connection ; https://docs.dust.tt/docs/dust-mcp-server ; https://dust.tt/pricing |
+| Claude connector directory | Google Drive (whole Drive by user permission), Notion, Atlassian, Microsoft 365, Box; Egnyte and Guru per their docs | ✘ | ✘ | n/a | ~1,037 connectors | https://claude.com/connectors |
+
+Conclusion: no product does R2 as specified (Guru is staleness-based; Bloomfire and Fini make vendor claims about contradiction detection without Drive), none does R3, none does R4. Supermemory is the only one with single-file Drive picking plus an OAuth MCP server.
+
+## Open-source tools not covered in round 1
+
+| Tool | Drive | MCP | Licence | Notes and sources |
+|---|---|---|---|---|
+| Khoj | none | client only | AGPL-3.0 | Cloud shut 2026-04-15; slowing. https://github.com/khoj-ai/khoj |
+| Kotaemon | none (issue #270) | client only | Apache-2.0 | https://github.com/Cinnamon/kotaemon |
+| Cognee | folders/shared drives on `drive.readonly` since v1.6.1 | self-host API key; hosted OAuth 2.1 documented as Claude.ai connector | Apache-2.0 (Postgres graph store licensed) | Cloud $1/1M tokens + $5/workspace/month. https://docs.cognee.ai/cognee-cloud/company-brain/google-drive.md ; https://docs.cognee.ai/cognee-cloud/connections/cloud-mcp.md ; https://cognee.ai/pricing |
+| Graphiti / Zep | none | HTTP, no auth | Apache-2.0 | https://raw.githubusercontent.com/getzep/graphiti/main/mcp_server/README.md |
+| LibreChat | none (deferred to MCP resources) | client only | MIT | Moved to https://github.com/LibreChat-AI/LibreChat (~46.5k stars, v0.8.8 2026-10-01) |
+| Open WebUI 0.12.5 | Picker with `drive.file` and multi-select since v0.12.3 (chat attachments) | client only | "Open WebUI License", clause 4 branding limit above 50 end users per rolling 30 days | https://github.com/open-webui/open-webui/releases/tag/v0.12.3 ; https://raw.githubusercontent.com/open-webui/open-webui/main/src/lib/utils/google-drive-picker.ts ; https://raw.githubusercontent.com/open-webui/open-webui/main/LICENSE |
+| AnythingLLM | none | client only | MIT | https://github.com/Mintplex-Labs/anything-llm |
+| Dify 1.18 | plugin picks single files but on `drive.readonly` (verify) | URL-secret, no OAuth | modified Apache-2.0: no multi-tenant without permission, keep logo | https://marketplace.dify.ai/plugin/langgenius/google_drive ; https://docs.dify.ai/en/use-dify/publish/publish-mcp ; https://raw.githubusercontent.com/langgenius/dify/main/LICENSE |
+| RAGFlow 1.0rc2 | folder URL | API keys | Apache-2.0 | https://ragflow.io/docs/add_data_source/data_source_configuration ; https://ragflow.io/docs/use_ragflow_as_mcp_server |
+
+## LLM Wiki pattern
+
+Karpathy's gist exists, created 2026-04-04 (VentureBeat coverage 2026-04-03): raw sources, LLM-written wiki pages, `index.md`, append-only `log.md`, a schema file (CLAUDE.md/AGENTS.md), and a lint pass for contradictions, stale claims, orphans and missing cross-references; Google Drive is not mentioned. https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f . Implementations (none sync Drive): Ar9av/obsidian-wiki (MIT, ~3.6k stars), sdyckjq-lab/llm-wiki-skill (MIT, ~2.6k), lucasastorian/llmwiki (Apache-2.0, ~1.7k; web app plus MCP server with `guide/search/read/create/edit/append/delete/lint` tools for Claude.ai, Cowork, Code), Pratiyush/llm-wiki (MIT). https://github.com/lucasastorian/llmwiki
+
+## Phase 2 stack
+
+- LiteLLM: MIT outside `enterprise/`; v1.106.6 (2026-10-28); budgets per key/team/user with `budget_duration`. Two 2026 supply-chain incidents: malicious 1.82.7/1.82.8 on PyPI 2026-03-24 (unverified) and a compromised 1.107.0 plus Docker `latest` tags on 2026-10-21; vendor advises pinning ≤1.106.2. https://docs.litellm.ai/blog/security-incident-oct-21-2026 ; https://docs.litellm.ai/docs/proxy/users
+- Alternatives: Bifrost (Apache-2.0, ~9.2k stars, hierarchical budgets) https://docs.getbifrost.ai/features/governance ; Portkey (MIT gateway, hosted $49/month); OpenRouter (5.5% fee); Vercel AI Gateway (BYOK free); Cloudflare AI Gateway; Helicone (Apache-2.0).
+- Vercel AI SDK v7 (2026-06-25, Apache-2.0); `@ai-sdk/anthropic` supports adaptive thinking, effort, `cacheControl`, server-side MCP via `mcpServers`. https://vercel.com/blog/ai-sdk-7 ; https://ai-sdk.dev/providers/ai-sdk-providers/anthropic
+- Mattermost: compiled builds MIT; self-built AGPL v3 or commercial; `server/enterprise` source-available; FAQ: derivative must replace name and logo, resale needs a reseller agreement. https://raw.githubusercontent.com/mattermost/mattermost/master/LICENSE.txt ; https://docs.mattermost.com/product-overview/faq-license . Rocket.Chat MIT outside `ee/`. Zulip Apache-2.0 (no trademark grant): https://raw.githubusercontent.com/zulip/zulip/main/LICENSE . Stream Chat Start $399/month, non-sublicensable.
+
+## Phase 3
+
+- Merchant of record: Paddle 5% + $0.50 (https://www.paddle.com/pricing). Stripe EEA cards 1.5% + €0.25, Stripe Tax 0.5%, Billing 0.7% (https://stripe.com/en-ie/pricing). Stripe Managed Payments (MoR) +3.5%, Czech sellers eligible, digital products only, subscriptions need Billing, buyer sees "Sold through Link, LLC", B2B reverse charge not documented. https://docs.stripe.com/payments/managed-payments ; https://docs.stripe.com/payments/managed-payments/eligibility . Lemon Squeezy is now Link, LLC; Polar 5% + $0.50; Creem 3.9% + $0.40.
+- Google OAuth for an external app on `drive.file`: verification optional; brand verification (homepage, privacy policy and ToS on the same Search-Console-verified domain) takes 2–3 business days of manual review. https://support.google.com/cloud/answer/13463073 ; https://developers.google.com/identity/protocols/oauth2/production-readiness/brand-verification . Workspace admins can allowlist an app by OAuth client ID; no Marketplace listing required. https://knowledge.workspace.google.com/admin/apps/control-which-apps-access-google-workspace-data
+- Competitive prices: Dust €24–30, Langdock €25, Notion Business €19.50, Google Workspace Business Standard €13.60, Slite $10–20, Guru ~$25 (unverified), Glean ~$50–75 with ~100-seat minimum (unverified), Supermemory $19–399 flat, Ragie $100+ flat, Cognee Cloud $5/workspace + tokens, Zapier MCP from $19.99. Nothing sells curated Drive docs + maintained summaries + OAuth connector at ~$5/user.

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repository is
 
-A planning and research workspace for **Zuri** (zuri.com, about 30 people, drones). The goal is an AI system that chats over a curated set of Google Drive documents per project. There is **no code yet**, so there are no build, lint or test commands. Everything here is Markdown and it is not a git repository.
+A planning and research workspace for **Zuri** (zuri.com, about 30 people, drones). The goal is an AI system that chats over a curated set of Google Drive documents per project. There is **no code yet**, so there are no build, lint or test commands. Everything here is Markdown. Since 2026-10-29 these files live in the `info/` folder of the git repository `https://github.com/illich/mozek.git` (local clone: `/run/media/mike/encrypted-usb/vibe/mozek`); the old copy in `/run/media/mike/encrypted-usb/vibe/ai4zuri` is frozen and must not be edited. Commit each round of edits with a short message.
 
 ## Document hierarchy (read in this order)
 

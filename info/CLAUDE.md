@@ -19,6 +19,8 @@ A planning and research workspace for **Zuri** (zuri.com, about 30 people, drone
 4. `solutions.md`: the market and option survey (requirements R1–R14, options A–I, comparison table). Option I is the chosen architecture, and it points to `zuri-context-service.md` for details.
 5. `existing-solutions-context-service.md`: the build-vs-buy research report (verdict: build, reusing FastMCP 4.x, the Google Picker sample, Drive Markdown export, the Docs API suggestion mode and the "LLM Wiki" pattern). An identical copy is kept at `reports/Existing context service solutions.md`. **Update both together.** The raw research notes are in `research_notes/`: round 1 in `Existing context service solutions/`, round 2 (2026-10-29, re-verification of every platform claim plus 18 more vendors) in `Round 2 (2026-10-29)/`. Notes are append-only; add a new round folder rather than rewriting old notes.
 
+`claude-design-handoff.md` (2026-11-03) is a self-contained Phase 3 product and UI brief for pasting into Claude Design. It deliberately doesn't reference other documents; keep it that way and update it when the UI or Phase 3 plans change.
+
 When `master-plan.md` or `concept.md` changes, propagate the change through 3 → 4 → 5, and keep the cross-references (section numbers, step numbers) consistent.
 
 ## Key decisions that shape all documents

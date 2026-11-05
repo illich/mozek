@@ -46,7 +46,7 @@ Two patterns exist and nothing else:
 | Docs API v1 | Full document JSON including all tabs, suggestions view, comments, original image URIs; suggested edits via `batchUpdate` | You write the Markdown converter yourself |
 | Sheets API v4 | Every tab as values, formatted or raw or formulas | No Markdown; 300 reads/min per project |
 | Drive Activity API v2 | Who did what: edit, rename, move, trash, delete, restore, permission change | Restricted scope; actor is a People ID, resolving a name needs another scope |
-| Workspace Events API | Pub/Sub events per file or folder: `contentChanged`, `renamed`, `moved`, `trashed`, comments, permissions | GA since 2026-05-18 per the release notes, but the API's own page still says preview **(verify)**; subscriptions last 7 days |
+| Workspace Events API | Pub/Sub events per file or folder: `contentChanged`, `renamed`, `moved`, `trashed`, comments, permissions | GA since 2026-05-18 per the release notes, but the API's own page still says preview **(verify)**; required scope not researched, may not work under `drive.file` **(verify)**; subscriptions last 7 days |
 | Push channels (`files.watch`, `changes.watch`) | A wake-up call to an HTTPS endpoint | Empty body; 1-day or 7-day channel lifetime; you still call the API |
 | Google Picker | A file dialog that grants `drive.file` per picked file | The grant belongs to the user who picked |
 | Google-hosted MCP servers (Drive, Docs, Sheets) | A remote MCP server Claude.ai can connect to directly | Developer Preview; needs `drive.readonly`; no file allowlist; may not be used in a public product before GA |
@@ -57,14 +57,14 @@ Two patterns exist and nothing else:
 
 ### 2.3 How do we get access to only the files we want, and keep it from a server?
 
-**Answer.** `drive.file` plus the Picker. The app sees only files a user picked, opened with the app, or the app created. The refresh token of the picking user then works from a server with nobody present; the Picker guide says exactly that the token can be passed to the Drive API for files "in which the user previously granted access".
+**Answer.** `drive.file` plus the Picker. The app sees only files a user picked, opened with the app, or the app created. The refresh token of the picking user should then work from a server with nobody present: the Picker guide says the token can be passed to the Drive API to "read and modify files in which the user previously granted access", and no rule beyond the token lifetimes below limits it **(verify, pilot step 3)**.
 
 **Where Google pushes back.**
 
 - The grant is per user. A file picked by Alice is not readable with Bob's `drive.file` token **(verify)**. If Alice leaves, is suspended, or revokes the app, her picks go dark. The plan's background sync rests on this.
 - Refresh tokens die when: unused for 6 months; the user revokes; the admin sets Drive to Restricted; 100 live tokens per account per client are exceeded. For an External app still in Testing status, after 7 days.
 - A service account is not the escape under `drive.file`: it only covers files the service account itself opened or created, not files merely shared with it **(inferred)**. A service account that reads shared files needs `drive.readonly`.
-- **The exemption the plan ignores:** an app with the consent screen set to Internal needs no verification, including for restricted scopes. No Google page says otherwise. So inside Zuri a service account with `drive.readonly`, shared the picked files or made a Shared Drive member, is legal and needs only the admin's "Trust internal apps" box. The "never restricted scopes" rule in the plan is a Phase 3 constraint, not a Phase 1 one.
+- **The exemption the plan ignores:** an app with the consent screen set to Internal needs no verification; Google lists "Internal use only" as an exemption and no page says restricted scopes re-trigger it, but no page says the opposite either **(verify, pilot step 8)**. If that holds, a service account with `drive.readonly`, shared the picked files or made a Shared Drive member, is legal inside Zuri and needs only the admin's "Trust internal apps" box. The "never restricted scopes" rule in the plan would then be a Phase 3 constraint, not a Phase 1 one.
 
 **Test.** Pilot steps 2, 3, 7 and 8 in §5.
 
@@ -147,7 +147,7 @@ Nothing is documented about how fast `modifiedTime` moves while someone is typin
 | Barrier | Internal app, Zuri's own Workspace (Phases 1–2) | Public product (Phase 3) |
 |---|---|---|
 | OAuth app verification | Not required | Brand verification for `drive.file`; use-case review for sensitive scopes |
-| Restricted scopes (`drive.readonly`, `drive`, Activity API) | Allowed, no assessment; admin ticks "Trust internal apps" | Annual CASA assessment by an authorised lab, about $540 per year **(unverified)**; app type must qualify |
+| Restricted scopes (`drive.readonly`, `drive`, Activity API) | Allowed with no assessment **(verify)**; admin ticks "Trust internal apps" | Annual CASA assessment by an authorised lab, about $540 per year **(unverified)**; app type must qualify |
 | 100-user cap for unverified apps | Does not apply | Applies until verified |
 | 7-day token expiry in Testing status | Does not apply | Applies until published |
 | Customer admin app controls | Our own admin | Every customer's admin can block us; restricted scopes need an explicit Trusted entry |
@@ -167,7 +167,7 @@ Nothing is documented about how fast `modifiedTime` moves while someone is typin
 
 No document has been edited. These are inputs for [zuri-context-service.md](zuri-context-service.md).
 
-1. **The scope rule splits by phase.** "Never restricted scopes" (§2, §4, §7.4 rule 5) stays right for Phase 3. For Phases 1–2 the Internal exemption makes a service account with `drive.readonly` legal, which fixes the user-bound-token problem for background sync (§3.2, §8 Q11). Decide in the pilot, and keep the registry able to run in both modes.
+1. **The scope rule splits by phase.** "Never restricted scopes" (§2, §4, §7.4 rule 5) stays right for Phase 3. For Phases 1–2 the Internal exemption, if the pilot confirms it **(verify)**, makes a service account with `drive.readonly` legal, which fixes the user-bound-token problem for background sync (§3.2, §8 Q11). Note that the fallback written in §3.2 and the §5 checklist, "share picked files with a service account" under `drive.file`, does not work as written: `drive.file` on a service account covers only files the account opened or created **(inferred)**. The fallback has to be the `drive.readonly` variant. Decide in the pilot, and keep the registry able to run in both modes.
 2. **Change feed.** §3.3 plans polling plus push channels. The Workspace Events API gives typed events and may be GA; test it in the pilot and keep polling as the fallback.
 3. **Mirror hygiene.** §3.3 and §3.4 should state: images out of Markdown into hash-named files, normalise, commit on hash change only, one commit per run, `version` in the trailer.
 4. **Converter ownership.** Plan for a Docs-JSON converter as the fallback to the native export; the native export alone is an unspecified dependency.
@@ -189,7 +189,7 @@ Do this before any other Phase 1 work. It costs one Google Cloud project, one te
 6. **Who did it.** Call the Drive Activity API for the Doc with the same `drive.file` token. Expect a scope error; then add `drive.activity.readonly` to the Internal app and repeat.
 7. **Second token.** Sign in as a second user who did not pick the file and try `files.get` with that user's token. Then revoke the first user's token at myaccount.google.com and repeat step 3.
 8. **Service account.** Share the Doc with a service account and try `files.get` with `drive.file`, then with `drive.readonly`. Add the service account to the Shared Drive as a member and repeat for the Shared Drive Doc.
-9. **Events.** Create a Workspace Events API subscription on the Doc with a Pub/Sub topic, and in parallel a `changes.watch` channel on an `ngrok` HTTPS endpoint. Edit the Doc and record what each delivers, and when each expires.
+9. **Events.** Create a Workspace Events API subscription on the Doc with a Pub/Sub topic and record which scope the API demands; then, in parallel, a `changes.watch` channel on an `ngrok` HTTPS endpoint. Edit the Doc and record what each delivers, and when each expires.
 10. **Admin side.** In the Workspace admin console open Security → API controls → App access control. Record whether the Internal app appears, its status, the state of "Trust internal apps", and what the admin could switch off.
 
 Exit criterion: steps 3, 4 and 5 pass with `drive.file` alone, or step 8 passes with a service account on `drive.readonly`. Either result lets Phase 1 start. If both fail, the context service needs a different access model before any more design work.

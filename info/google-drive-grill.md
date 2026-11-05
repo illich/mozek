@@ -284,6 +284,27 @@ Exit criterion: steps 3, 4 and 5 pass with `drive.file` alone, or step 8 passes 
 
 ---
 
+## 6. What we found
+
+**Google is not the enemy of this plan.** It does not block third-party access to Docs; it prices it, and the price is zero for the access pattern we chose. Per-file access through `drive.file` and the Picker needs no verification, no security assessment, no Limited Use paperwork, and works at any customer whose admin has not blocked us. Every expensive rule (CASA, disclosure screens, admin trust entries, approved app types) starts the moment we ask for `drive.readonly` or the Activity API in a product sold outside our own Workspace. Inside Zuri none of it applies.
+
+**The traps are smaller and technical, in this order:**
+
+1. A `drive.file` grant belongs to the person who picked the file. Their departure, suspension, revocation or six months of inactivity switches the document off. The fallback written in the plan, a service account under `drive.file`, does not work; a service account needs `drive.readonly`, which is legal inside Zuri **(verify)** and a CASA cost in Phase 3.
+2. The Markdown export is an unspecified format: base64 images at the end, comments and suggestions dropped, tabs concatenated, determinism untested. The mirror has to normalise, commit on content hash, and keep a Docs-JSON converter as the fallback.
+3. "Who changed it" sits behind a restricted scope. Under `drive.file` we get "something changed" and the last editor; delete and un-share look alike. The maintainer loop does not need more.
+4. Phases 1–2 and Phase 3 run under different rules. Anything built on a restricted scope now is rework later. The registry must run in both access modes.
+5. The registry overrides Drive permissions and the plan does not say so. The resolution: the registry is the source of truth, and the service makes Drive follow it by sharing each registered document with a per-project Google Group, checked on every sync.
+6. Claude.ai consumer accounts can train on inputs. Phase 3 customers must be on Team or Enterprise.
+7. Sheets have no Markdown and PDFs have no text. All conversion beyond Docs is our code.
+8. Google promises 30 days' notice. It has changed auth and quotas repeatedly and left the data APIs alone. The Google adapter is one module.
+
+**Source of truth.** For content it is Drive; the mirror is a cache stamped with `version` and export time. Google Docs stay the source in Phase 1. Native `.md` files in Docs, editable since October 2026, are the cheapest way out of trap 2 and belong in the pilot, one document at a time. The Hub as editor is a Phase 2+ product decision, not a Google constraint.
+
+**What settles it.** The twelve-step pilot in §5, one afternoon. Pass means steps 3, 4 and 5 work with `drive.file` alone, or step 8 works with a service account on `drive.readonly`. Fail on both means the context service needs a different access model before any more design.
+
+---
+
 ## Sources
 
 Full source lists with page stamps are in the six Round 3 notes: [google_oauth_admin_tokens.md](research_notes/Round%203%20(2026-11-05)/google_oauth_admin_tokens.md), [google_drive_change_detection.md](research_notes/Round%203%20(2026-11-05)/google_drive_change_detection.md), [google_docs_markdown_git.md](research_notes/Round%203%20(2026-11-05)/google_docs_markdown_git.md), [google_integrators_mcp_addons.md](research_notes/Round%203%20(2026-11-05)/google_integrators_mcp_addons.md), [google_data_policy_stability_cost.md](research_notes/Round%203%20(2026-11-05)/google_data_policy_stability_cost.md), [google_writeback_sync_tools_nonnative.md](research_notes/Round%203%20(2026-11-05)/google_writeback_sync_tools_nonnative.md). The pages this note leans on most:

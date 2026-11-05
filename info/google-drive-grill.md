@@ -1,6 +1,6 @@
 # Google Drive integration: the grill
 
-Status: research note, 2026-11-05 (revision 1). Written against Google's own documentation as of this date, plus vendor help pages and open-source code where Google is silent. Full findings with page stamps are in [research_notes/Round 3 (2026-11-05)/](research_notes/Round%203%20(2026-11-05)/). Claims that rest on a third party only are marked **(unverified)**; inferences that need a test are marked **(verify)**. Google changes these rules often (two relevant changes in October 2026 alone), so re-check before building on any row.
+Status: research note, 2026-11-05 (revision 2: questions 9–15 added after a review of the first eight; two more Round 3 notes). Written against Google's own documentation as of this date, plus vendor help pages and open-source code where Google is silent. Full findings with page stamps are in [research_notes/Round 3 (2026-11-05)/](research_notes/Round%203%20(2026-11-05)/). Claims that rest on a third party only are marked **(unverified)**; inferences that need a test are marked **(verify)**. Google changes these rules often (two relevant changes in October 2026 alone), so re-check before building on any row.
 
 **Why this document.** The plan assumes a server of ours can read a hand-picked set of Google Docs and Sheets, keep Markdown copies, notice every change, and later do the same for other companies. The author's fear: Google will fight this at every step. This note asks the naive questions, answers each from the sources, names where Google pushes back, and gives a test that settles it in an afternoon.
 
@@ -18,6 +18,16 @@ Status: research note, 2026-11-05 (revision 1). Written against Google's own doc
 6. Does Google tell us when a document is edited, renamed, moved, deleted, or un-shared, and by whom?
 7. What can a Workspace admin switch off under us?
 8. Is there a shortcut: Google's own MCP servers, or Claude.ai's Drive connector?
+
+Added after a review of the first eight (revision 2):
+
+9. Are we allowed to feed Google Docs content to an AI model at all?
+10. Whose permissions win: Drive's or our registry's?
+11. What about files on Drive that are not Docs or Sheets: PDFs, Word files, Slides, images?
+12. How stable is all this: how often does Google change the rules, and with how much notice?
+13. What does it cost in money?
+14. Does writing back work: suggested edits and comments from the AI?
+15. Can we avoid the API by syncing files to disk (rclone, Drive for desktop)?
 
 ---
 
@@ -140,6 +150,74 @@ Nothing is documented about how fast `modifiedTime` moves while someone is typin
 
 **Open-source MCP servers.** The most used one (`taylorwilsdon/google_workspace_mcp`, MIT, 3.5k stars) cannot be limited to selected files and uses `drive.readonly`. The reference server from Anthropic's organisation was archived in May 2025.
 
+### 2.9 Are we allowed to feed Google Docs content to an AI model at all?
+
+**Answer.** Yes, for inference. No, for training. Google's Workspace API policy forbids "using user data to create, train, or improve a machine learning or artificial intelligence model beyond that specific user's personalized model". Sending a document to Claude to answer a question is a *transfer* of user data, and the only exception that fits is "to provide … user-facing features that are visible and prominent in the requesting application's user interface and only with the user's consent". Anthropic's commercial terms say "Anthropic may not train models on Customer Content from Services", which closes the loop for the API and for Claude Team and Enterprise.
+
+**Where Google pushes back.**
+
+- These "Limited Use" rules attach to **sensitive and restricted scopes** and, by Google's own sentence, "If your app is only used by users within your own domain, then these requirements do not apply." Under `drive.file` alone they do not apply either. So they bite in Phase 3, and only if we move beyond `drive.file`.
+- When they bite, Google wants: a disclosure of data use inside the app itself, "not only in a privacy policy"; a privacy policy stating Limited Use compliance and no training of non-personalised models; and, for anything agentic, that users "confirm the MCP, tool, skill, or other agentic behavior invocation" and that we protect against prompt injection.
+- **A trap on our side:** Claude.ai Free, Pro and Max accounts may be used for training when the user's setting is on. Employees reaching our MCP server must be on Team or Enterprise, or have training off. Zuri is on Team, so fine today; a Phase 3 customer on Pro is not.
+
+**Test.** None for the pilot. For Phase 3: write the disclosure screen and the two privacy-policy sentences before the first external customer.
+
+### 2.10 Whose permissions win: Drive's or our registry's?
+
+**Answer.** Ours, and nothing in the plan says so. Once a document is in the mirror, the registry's roles decide who reads it. A project reader gets the content of a Doc they could not open in Drive. Google neither prevents nor notices this; it is the normal consequence of a server-side copy, and every indexing product (Glean, Guru, ChatGPT sync) faces the same choice. Glean and Guru answer it by re-checking Drive permissions per user at query time, which needs `drive.readonly` and directory scopes.
+
+**Where Google pushes back.** It doesn't. This is a product decision: either the registry is the source of truth (simple, explicit, and the admin who registers a document is declaring it readable by the project), or the service checks the Drive ACL of the asking user at query time (needs a token per user and a `permissions.list` call, 5 units, cacheable). The concept's own words, "we don't really want to give a broad read-everything access to AI … for security principles", argue for the first, with one addition: the admin UI should warn when a registered document is not shared with every project member.
+
+**Test.** None needed. Decision for [zuri-context-service.md](zuri-context-service.md) §3.1 and §4.
+
+### 2.11 What about files on Drive that are not Docs or Sheets?
+
+**Answer.** The Picker selects them (there are views for PDFs, images, presentations, drawings, forms), `drive.file` covers them once picked, and `files.get?alt=media` downloads them up to Drive's 5 TB limit. Drive extracts no text for us; the indexable-text field is write-only, and OCR runs only when a file is converted into a Doc on upload. So conversion is ours: markitdown (MIT, 194k stars), docling (MIT, table recognition and OCR) or pandoc for docx. Slides come as plain text or pptx, or as JSON from the Slides API including speaker notes. A Word file can also be converted into a Google Doc by uploading it with the Docs MIME type, which creates a file our app owns and can export as Markdown.
+
+**Where Google pushes back.** Only by offering nothing. The 10 MB cap applies to exports, not to downloads.
+
+**Test.** Pilot step 12 in §5.
+
+### 2.12 How stable is all this?
+
+**Answer.** The APIs are stable; the rules around them move every few months. Google's API terms let it "discontinue the APIs … for any reason and at any time" with changes effective "no sooner than 30 days after they are posted". The Cloud terms' 12-month notice for backwards-incompatible changes covers Workspace core services, and whether that includes the developer APIs is not established. For the coming billing change Google has promised 90 days.
+
+What changed in the last two years, from the release notes: restricted-scope verification (2020), OAuth out-of-band flow removed (2023), service accounts lost Drive storage (2025), granular consent for HTTP add-ons (2025), the quota-unit model (May 2026), Events API GA (May 2026), native Markdown (October 2026), the MCP client flag (November 2026), billing above a threshold "later in 2026". None of them changed `drive.file`, the Picker, `files.export` or the change feed. The pattern: Google tightens auth and adds billing, and leaves the data APIs alone.
+
+**Where Google pushes back.** 30 days is the only contractual promise. A product sold to others needs a watch on the Workspace release notes and the Workspace Updates blog, and an architecture where the Google adapter is one module.
+
+**Test.** None. Subscribe to the two feeds.
+
+### 2.13 What does it cost in money?
+
+| Item | Today | Later |
+|---|---|---|
+| Drive, Docs, Sheets APIs | Free, "no additional cost" | Charges above 400 million units/day "planned later in 2026", 90 days' notice, no price list yet. Our load is about 2.4 million units/day at 500 files hourly |
+| Google Cloud project | No billing account needed to enable the APIs **(inferred)** | Quota increases will require billing |
+| Pub/Sub for the Events API | First 10 GiB/month free | $40 per TiB after |
+| OAuth verification | Free | Free |
+| CASA assessment (restricted scopes, Phase 3 only) | Not needed | Google charges nothing; the lab does: about $540 per year for Tier 2 **(unverified)**, once a year |
+| Marketplace listing | Free | Free |
+| Developer Preview programme (hosted MCP) | Free | Not usable in a public product |
+
+**Where Google pushes back.** The one unknown is the API price list, which does not exist yet. At our volume it should not matter; at Phase 3 volume it is a per-tenant cost line we cannot quote today.
+
+### 2.14 Does writing back work?
+
+**Answer.** Yes, since 30 September 2026, and under `drive.file`. The Docs API's `batchUpdate` with `writeMode: SUGGEST` applies every request as a suggestion the maintainer can accept or reject; anchored comments go through the Docs API's `InsertCommentRequest` with a text range and an optional assignee, and Sheets and Slides got anchored comments the same day. Drive's older `comments.create` still exists but Google says the editors "don't render comments created with the Drive API anchored to content". Both appear under the OAuth user's name, so the AI's comment is signed by whoever's token the service uses **(verify)**.
+
+**Where Google pushes back.** Suggest mode cannot touch document format, headers, footers, tabs or named ranges. Docs API writes are limited to 60 per minute per user. Rejecting a suggestion needs edit access or authorship, so the service account or user that wrote it should keep access.
+
+**Test.** Pilot step 11 in §5.
+
+### 2.15 Can we avoid the API by syncing files to disk?
+
+**Answer.** No. Drive for desktop keeps native Docs as links that open in the browser; there is no local content. Takeout runs at most every two months with no API. rclone can export Docs to Markdown (`md` is in its export-format list), but it cannot work under our per-file model: its `drive.file` mode sees "only files and folders rclone creates", so it needs `drive.readonly` or `drive`, or a service account with domain-wide delegation. Its shared client ID "is being retired and will stop working during 2026". The gog CLI is the same story with `drive` plus `documents`. Every one of these tools ends up calling `files.export` and the change feed, which is what our sync worker does without the detour.
+
+**Where Google pushes back.** By making the per-file scope incompatible with generic sync tools. That is the point of `drive.file`.
+
+**Test.** None.
+
 ---
 
 ## 3. Where Google pushes back: Zuri now vs. Phase 3
@@ -157,6 +235,10 @@ Nothing is documented about how fast `modifiedTime` moves while someone is typin
 | Change feed without actor; actor needs a restricted scope | Workable (internal scope allowed) | Actor unavailable unless CASA |
 | Push channels payload-less, 7-day renewal; Events API 7-day renewal | Applies | Applies |
 | Quotas (1M units/min per project; export 200 units) | Fine for 500 files hourly | Per-project quota shared by all tenants; charges "planned later in 2026" |
+| Limited Use policy: in-app disclosure, privacy-policy statements, no training, consent for agentic calls | Does not apply (own domain) | Applies once we hold a sensitive or restricted scope; `drive.file` alone is exempt |
+| Claude.ai consumer accounts may train on inputs | Zuri is on Team | Customers must be on Team/Enterprise or have training off |
+| API billing above 400 million units/day | Far below | A cost line with no price list yet |
+| Generic sync tools (rclone, gog) incompatible with `drive.file` | Applies | Applies |
 | Google-hosted MCP servers in Developer Preview | Usable personally | May not be used in a public product before GA |
 | Marketplace listing | Private listing, no review | Public listing needs OAuth verification and Marketplace review |
 | OAuth client "AI-powered agent" flag from 2026-11-11 | Only if we call Google's MCP servers | Same |
@@ -174,6 +256,10 @@ No document has been edited. These are inputs for [zuri-context-service.md](zuri
 5. **Actor identity.** The maintainer loop needs no Google actor. Say so in §3.6, and limit the Files view to "last modified by".
 6. **Native `.md` in Docs** is a new option for projects whose authors accept writing Markdown. Worth one paragraph in §8.
 7. **The 2026-11-11 rule** needs no action unless we use Google's MCP servers.
+8. **Permissions model.** State in §3.1 and §4 that the registry, not Drive, decides who reads a mirrored document, and add an admin-UI warning when a registered document is not shared with every project member.
+9. **Phase 3 compliance list** for §7.1: in-app data-use disclosure, privacy policy with the Limited Use and no-training sentences, user confirmation of MCP tool calls, prompt-injection mitigation, and a requirement that customers' Claude.ai users are on Team or Enterprise.
+10. **Non-native files.** §3.3 should name the converter for PDF, docx and pptx (markitdown or docling) and treat Slides as JSON from the Slides API.
+11. **Write-back** (§6.5 step 2.4) is confirmed GA under `drive.file` with the Docs API, including anchored comments; drop the Drive `comments.create` route.
 
 ---
 
@@ -191,6 +277,8 @@ Do this before any other Phase 1 work. It costs one Google Cloud project, one te
 8. **Service account.** Share the Doc with a service account and try `files.get` with `drive.file`, then with `drive.readonly`. Add the service account to the Shared Drive as a member and repeat for the Shared Drive Doc.
 9. **Events.** Create a Workspace Events API subscription on the Doc with a Pub/Sub topic and record which scope the API demands; then, in parallel, a `changes.watch` channel on an `ngrok` HTTPS endpoint. Edit the Doc and record what each delivers, and when each expires.
 10. **Admin side.** In the Workspace admin console open Security → API controls → App access control. Record whether the Internal app appears, its status, the state of "Trust internal apps", and what the admin could switch off.
+11. **Write back.** With the `drive.file` token call the Docs API `batchUpdate` with `writeMode: SUGGEST` to replace one sentence, and `InsertCommentRequest` to anchor a comment on it. Open the Doc and record how both appear and under whose name.
+12. **Non-native files.** Pick a PDF and a Word file through the Picker, download both with `files.get?alt=media`, run markitdown on them, and judge the Markdown. Upload the Word file with the Google Docs MIME type and export the result as Markdown.
 
 Exit criterion: steps 3, 4 and 5 pass with `drive.file` alone, or step 8 passes with a service account on `drive.readonly`. Either result lets Phase 1 start. If both fail, the context service needs a different access model before any more design work.
 
@@ -198,7 +286,7 @@ Exit criterion: steps 3, 4 and 5 pass with `drive.file` alone, or step 8 passes 
 
 ## Sources
 
-Full source lists with page stamps are in the four Round 3 notes: [google_oauth_admin_tokens.md](research_notes/Round%203%20(2026-11-05)/google_oauth_admin_tokens.md), [google_drive_change_detection.md](research_notes/Round%203%20(2026-11-05)/google_drive_change_detection.md), [google_docs_markdown_git.md](research_notes/Round%203%20(2026-11-05)/google_docs_markdown_git.md), [google_integrators_mcp_addons.md](research_notes/Round%203%20(2026-11-05)/google_integrators_mcp_addons.md). The pages this note leans on most:
+Full source lists with page stamps are in the six Round 3 notes: [google_oauth_admin_tokens.md](research_notes/Round%203%20(2026-11-05)/google_oauth_admin_tokens.md), [google_drive_change_detection.md](research_notes/Round%203%20(2026-11-05)/google_drive_change_detection.md), [google_docs_markdown_git.md](research_notes/Round%203%20(2026-11-05)/google_docs_markdown_git.md), [google_integrators_mcp_addons.md](research_notes/Round%203%20(2026-11-05)/google_integrators_mcp_addons.md), [google_data_policy_stability_cost.md](research_notes/Round%203%20(2026-11-05)/google_data_policy_stability_cost.md), [google_writeback_sync_tools_nonnative.md](research_notes/Round%203%20(2026-11-05)/google_writeback_sync_tools_nonnative.md). The pages this note leans on most:
 
 - Scopes and verification: https://developers.google.com/workspace/drive/api/guides/api-specific-auth , https://developers.google.com/identity/protocols/oauth2/production-readiness/overview , https://support.google.com/cloud/answer/13464321 , https://support.google.com/cloud/answer/13465431 , https://support.google.com/cloud/answer/15549945 , https://appdefensealliance.dev/casa/casa-tiering
 - Tokens and admin controls: https://developers.google.com/identity/protocols/oauth2 , https://knowledge.workspace.google.com/admin/apps/control-which-apps-access-google-workspace-data , https://knowledge.workspace.google.com/admin/apps/control-api-access-with-domain-wide-delegation
@@ -209,4 +297,8 @@ Full source lists with page stamps are in the four Round 3 notes: [google_oauth_
 - MCP and connectors: https://developers.google.com/workspace/guides/configure-mcp-servers , https://developers.google.com/workspace/release-notes , https://developers.google.com/workspace/preview , https://claude.com/docs/connectors/google/drive , https://support.claude.com/en/articles/10166901-use-google-workspace-connectors , https://github.com/taylorwilsdon/google_workspace_mcp
 - Add-ons and Apps Script: https://developers.google.com/workspace/add-ons/concepts/types , https://developers.google.com/workspace/add-ons/guides/alternate-runtimes , https://developers.google.com/workspace/marketplace/how-to-publish , https://developers.google.com/apps-script/guides/services/quotas
 - Converters and git: https://github.com/MattFisher/md-gdoc , https://github.com/mieweb/wikiGDrive , https://github.com/benjaminRomano/gdocs-md-cli , https://github.com/rsheyd/google-docs-markdown-sync , https://constly.com/blog/google-docs-to-markdown/ (unverified)
+- Data policy and terms: https://developers.google.com/terms/api-services-user-data-policy , https://developers.google.com/workspace/workspace-api-user-data-developer-policy , https://support.google.com/cloud/answer/13463817 , https://developers.google.com/terms , https://developers.google.com/workspace/tools-safety , https://www.anthropic.com/legal/commercial-terms , https://privacy.claude.com/en/articles/7996868-is-my-data-used-for-model-training
+- Write-back: https://developers.google.com/workspace/docs/api/how-tos/suggestions , https://workspaceupdates.googleblog.com/2026/09/programmatic-comment-and-suggestion.html , https://developers.google.com/workspace/drive/api/guides/manage-comments
+- Sync tools and converters for non-native files: https://rclone.org/drive/ , https://forum.rclone.org/t/google-drive-and-google-photos-users-action-required/54005/ , https://github.com/openclaw/gogcli , https://support.google.com/drive/answer/10838124 , https://github.com/microsoft/markitdown , https://github.com/docling-project/docling
+- Cost: https://cloud.google.com/pubsub/pricing , https://developers.google.com/workspace/marketplace/overview
 - Vendors: https://workspace.google.com/marketplace/app/docusign_esignature_for_google_workspace/469176070494 , https://docs.glean.com/connectors/native/gdrive/setup , https://help.getguru.com/docs/setting-up-google-drive-google-sheets-as-a-source , https://help.openai.com/en/articles/10929079 , https://www.notion.com/help/notion-ai-connectors-for-google-drive

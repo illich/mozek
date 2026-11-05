@@ -117,3 +117,8 @@ Answer: yes, non-Google products work with Docs effectively, under two patterns.
 - S48 https://developers.google.com/workspace/events/guides/events-drive
 - S49 https://developers.google.com/workspace/events/guides/update-subscription ; https://developers.google.com/workspace/events/guides/events-lifecycle
 - S50 https://developers.google.com/workspace/events/docs/release-notes ; https://workspaceupdates.googleblog.com/2025/07/google-drive-events-api-now-available.html
+
+## Addendum (2026-11-05, after review): Workspace Events API scopes for Drive
+
+- The auth page (https://developers.google.com/workspace/events/guides/auth) says creating a subscription "With user authentication, requires a supported scope for each event type". Its "Scopes by event type" table lists for file events (`google.workspace.drive.file.v3.*`): `drive`, `drive.file`, `drive.readonly`, `drive.metadata`. Comment, reply, permission, approval and access-proposal events add `drive.metadata.readonly`. So `drive.file` is enough for content/rename/move/trash events on picked files.
+- The Drive events page (https://developers.google.com/workspace/events/guides/events-drive) adds: "The user that authorizes the subscription must have permission on the file corresponding to the events that they subscribe to." Neither page carries a GA or Developer Preview label, and neither states subscription lifetimes (those are on the lifecycle page cited above).
